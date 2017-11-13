@@ -1,0 +1,228 @@
+---
+layout: post
+title:  "PHP PSR规范"
+date:   2017-11-13 22:07:51 +0800
+categories: jekyll update
+---
+
+
+# PSR版本
+
+1. [PSR0](https://github.com/PizzaLiu/PHP-FIG/blob/master/PSR-0-cn.md) (已弃用)
+2. [PSR1](https://github.com/PizzaLiu/PHP-FIG/blob/master/PSR-1-basic-coding-standard-cn.md)
+3. [PSR2](https://github.com/PizzaLiu/PHP-FIG/blob/master/PSR-2-coding-style-guide-cn.md)
+4. [PSR2-补充](https://github.com/PizzaLiu/PHP-FIG/blob/master/PSR-2-coding-style-guide-meta-cn.md)
+5. [PSR3](https://github.com/PizzaLiu/PHP-FIG/blob/master/PSR-2-coding-style-guide-meta-cn.md)
+6. [PSR4](https://github.com/PizzaLiu/PHP-FIG/blob/master/PSR-4-autoloader-cn.md)
+
+# PSR 简介
+
+PSR 为 PHP编码规范,是PHP互操作性框架制定小组（PHP-FIG :PHP Framework Interoperability Group）制定的PHP编码规范（PSR:Proposing a Standards Recommendation）
+
+# PSR-1
+
+规范制定了代码基本元素的相关标准， 以确保共享的PHP代码间具有较高程度的技术互通性。
+
+概况
+
+	 1. PHP 代码文件必须以 <?php 或 <?= 标签开始;
+	 2. PHP 代码文件必须以不带 BOM 的 UTF-8 编码
+	 3. PHP 代码中应该只定义类.函数.常量等生命,或其他会产生 *从属效应* 的操作(如:生成文件输出及修改.ini配置文件等),二者只能选其一;
+	 4. 命名空间以及类必须符合PSR的自动加载规范:PSR-0或者PSR-4中的一个;
+	 5. 类的命名必须遵循大写开头的驼峰命名规范;
+	 6. 类中的常量所有字母都必须大写,单词间用下划线分隔;
+	 7. 方法名称必须符合小写开头驼峰命名规范.
+
+注解:
+	从属效应:
+	一个PHP文件中应该要不就只定义新的声明,如类.还输或常量等,而执行的逻辑操作,但不该同时具有两者.
+
+	"从属效应" 包含却不仅限于 :生成输出.直接的 require 或 include .连接外部服务 .修改ini配置.抛出错误或异常.修改全局或者静态变量.读或写文件等
+
+# PSR-2
+	
+概况
+
+	1. PHP代码遵循PSR-1中编码规范.
+	2. 代码必须使用4个空格而不是tab键进行缩进.
+	3. 每行字符应该软性保持在80个以内,理论上一定不多余120个,但一定不能有硬性限制.
+	4. 每个 namespace 命名空间生命语句和 use 声明语句后面,必须插入一行空白行.
+	5. 类的开始花括号必须卸载函数声明后自成一行,结束的花括号也必须写在函数主体后自成一行.
+	6. 方法开始花括号必须写在函数声明后自成一行,
+	结束的花括号也必须写在函数主体后自成一行.
+	7. 类的属性和方法必须添加访问修饰符(private,public,protected),abstract 以及 final 必须声明在访问修饰符之前,而static必须放在访问修饰符之后.
+	8. 控制结果的关键字后必须要有一个空格符,而调用方法或函数时则一定不能有.
+	9. 控制结构的开始花括号必须写在声明的同一行,而结束花括号必须写在主体后自成一行.
+	10.控制结构的开始左括号后和结束右括号前,都一定不能有空格符
+
+# PSR-2 补充
+	
+	1. 使用一个或者多个跨行的参数(如数组或者匿名函数)并不需要触发参数列表的单行规定,因此,在参数表中的数组和匿名函数可以单独单列成多行的.
+	2. 当需要扩展多个接口,extends相关规范与4.1节中的implement的规范一致
+
+# PSR-3
+	
+日志类库的通用接口规范
+
+规范说明:	
+
+基本规范
+
+	1. LoggerInterface 接口对外定义了八个方法，分别用来记录 RFC 5424 中定义的八个等级的日志：debug、 info、 notice、 warning、 error、 critical、 alert 以及 emergency 。
+	2. 第九个方法 —— log，其第一个参数为记录的等级。可使用一个预先定义的等级常量作为参数来调用此方法，必须与直接调用以上八个方法具有相同的效果。如果传入的等级常量参数没有预先定义，则必须抛出 Psr\Log\InvalidArgumentException 类型的异常。在不确定的情况下，使用者不该使用未支持的等级常量来调用此方法
+	
+记录信息
+	
+	以上每个方法都接受一个字符串类型或者是有 __toString()方法的对象作为记录信息参数,这样,实现着就能把它当成字符串来处理,否则实现着必须自己把它转换成字符串.
+	记录信息参数可以携带占位符,实现者可以根据上下文将其他替换成相应的值.
+
+其中占位符必须与上下文数组中的键名保持一致.
+占位符的名称必须由一个左花括号以及一个右花括号包含.但花括号与名称之间一定不能有空格符.
+占位符的名称应该只有A-Z.a-z.0-9.下划线_.以及英文的句号.组成,其他字符作为将来占位符规范保留.
+实现者可以通过占位符采用不同的转义和转换策略,来生成最终的日志,而使用者在不知道上下文的前提下,不该提前转义占位符.
+以下是一个占位符的例子
+
+	    //用上下文信息替换记录信息中的占位符 
+		function interpolate($message, array $context = array()){
+		    // 构建一个花括号包含的键名的替换数组
+		    $replace = array();
+		    foreach ($context as $key => $val) {
+		        $replace['{' . $key . '}'] = $val;
+		    }
+
+		    // 替换记录信息中的占位符，最后返回修改后的记录信息。
+		    return strtr($message, $replace);
+		}
+
+		// 含有带花括号占位符的记录信息。
+		$message = "User {username} created";
+
+		// 带有替换信息的上下文数组，键名为占位符名称，键值为替换值。
+		$context = array('username' => 'bolivar');
+
+		// 输出 "Username bolivar created"
+		echo interpolate($message, $context);
+
+上下文
+	
+	每个记录函数都接受一个上下文数组参数,用来装载字符串类型无法表示的信息.
+	它可以装载任何信息,所以实现着必须确保正确处理其装载的信息,对于其装载的数据,一定不能抛出异常,或者产生PHP出错.警告或者提醒信息(error,warning.notice).
+	如需通过上下文参数传入一个Exception 对象,必须以 'exception' 作为键名.记录异常信息是很普遍的,所以如果它能够在记录类库的底层实现,就能够让实现者从异常信息中抽丝剥茧。 当然，实现者在使用它时，必须确保键名为 'exception' 的键值是否真的是一个 Exception，毕竟它可以装载任何信息.
+
+助手类和接口
+	
+    Psr\Log\AbstractLogger 类使得只需继承它和实现其中的 log 方法，就能够很轻易地实现 LoggerInterface 接口，而另外八个方法就能够把记录信息和上下文信息传给它。
+
+    同样地，使用 Psr\Log\LoggerTrait 也只需实现其中的 log 方法。不过，需要特别注意的是，在traits可复用代码块还不能实现接口前，还需要 implement LoggerInterface。
+
+    在没有可用的日志记录器时， Psr\Log\NullLogger 接口可以为使用者提供一个备用的日志“黑洞”。不过，当上下文的构建非常消耗资源时，带条件检查的日志记录或许是更好的办法。
+
+    Psr\Log\LoggerAwareInterface 接口仅包括一个 setLogger(LoggerInterface $logger) 方法，框架可以使用它实现自动连接任意的日志记录实例。
+
+    Psr\Log\LoggerAwareTrait trait可复用代码块可以在任何的类里面使用，只需通过它提供的 $this->logger，就可以轻松地实现等同的接口。
+
+    Psr\Log\LogLevel 类装载了八个记录等级常量。
+
+    包
+
+上述的接口、类和相关的异常类，以及一系列的实现检测文件，都包含在 psr/log 文件包中。
+
+Psr\Log\LoggerInterface
+	
+		<?php
+
+		namespace Psr\Log;
+
+		/** * 日志记录实例 * * 日志信息变量 —— message， **必须**是一个字符串或是实现了 __toString() 方法的对象。 * * 日志信息变量中**可以**包含格式如 “{foo}” (代表foo) 的占位符， * 它将会由上下文数组中键名为 "foo" 的键值替代。 * * 上下文数组可以携带任意的数据，唯一的限制是，当它携带的是一个 exception 对象时，它的键名 必须 是 "exception"。 * * 详情可参阅： https://github.com/PizzaLiu/PHP-FIG/blob/master/PSR-3-logger-interface-cn.md */
+		interface LoggerInterface
+		{
+		    /** * 系统不可用 * * @param string $message * @param array $context * @return null */
+		    public functionemergency($message, array $context = array());
+
+		    /** * **必须**立刻采取行动 * * 例如：在整个网站都垮掉了、数据库不可用了或者其他的情况下，**应该**发送一条警报短信把你叫醒。 * * @param string $message * @param array $context * @return null */
+		    public functionalert($message, array $context = array());
+
+		    /** * 紧急情况 * * 例如：程序组件不可用或者出现非预期的异常。 * * @param string $message * @param array $context * @return null */
+		    public functioncritical($message, array $context = array());
+
+		    /** * 运行时出现的错误，不需要立刻采取行动，但必须记录下来以备检测。 * * @param string $message * @param array $context * @return null */
+		    public functionerror($message, array $context = array());
+
+		    /** * 出现非错误性的异常。 * * 例如：使用了被弃用的API、错误地使用了API或者非预想的不必要错误。 * * @param string $message * @param array $context * @return null */
+		    public functionwarning($message, array $context = array());
+
+		    /** * 一般性重要的事件。 * * @param string $message * @param array $context * @return null */
+		    public functionnotice($message, array $context = array());
+
+		    /** * 重要事件 * * 例如：用户登录和SQL记录。 * * @param string $message * @param array $context * @return null */
+		    public functioninfo($message, array $context = array());
+
+		    /** * debug 详情 * * @param string $message * @param array $context * @return null */
+		    public functiondebug($message, array $context = array());
+
+		    /** * 任意等级的日志记录 * * @param mixed $level * @param string $message * @param array $context * @return null */
+		    public functionlog($level, $message, array $context = array());
+		}
+
+Psr\Log\LoggerAwareInterface
+		
+		<?php
+
+		namespace Psr\Log;
+
+		/** * logger-aware 定义实例 */
+		interface LoggerAwareInterface
+		{
+		    /** * 设置一个日志记录实例 * * @param LoggerInterface $logger * @return null */
+		    public functionsetLogger(LoggerInterface $logger);
+		}
+
+Psr\Log\LogLevel
+		
+		<?php
+
+		namespace Psr\Log;
+
+		/** * 日志等级常量定义 */
+		class LogLevel
+		{
+		    const EMERGENCY = 'emergency';
+		    const ALERT     = 'alert';
+		    const CRITICAL  = 'critical';
+		    const ERROR     = 'error';
+		    const WARNING   = 'warning';
+		    const NOTICE    = 'notice';
+		    const INFO      = 'info';
+		    const DEBUG     = 'debug';
+		}
+
+
+# PSR-4
+	
+详细说明
+	
+	1. 此处的“类”泛指所有的class类、接口、traits可复用代码块以及其它类似结构。
+
+    2. 一个完整的类名需具有以下结构:\<命名空间>(\<子命名空间>)*\<类名>
+
+    3. 完整的类名必须要有一个顶级命名空间，被称为 "vendor namespace"；
+
+    4. 完整的类名可以有一个或多个子命名空间；
+
+    5. 完整的类名必须有一个最终的类名；
+
+    6. 完整的类名中任意一部分中的下滑线都是没有特殊含义的；
+
+    7. 完整的类名可以由任意大小写字母组成；
+
+    8. 所有类名都必须是大小写敏感的。
+
+    9. 当根据完整的类名载入相应的文件……
+
+    10. 完整的类名中，去掉最前面的命名空间分隔符，前面连续的一个或多个命名空间和子命名空间，作为“命名空间前缀”，其必须与至少一个“文件基目录”相对应；
+
+    11. 紧接命名空间前缀后的子命名空间必须与相应的”文件基目录“相匹配，其中的命名空间分隔符将作为目录分隔符。
+
+    12 .末尾的类名必须与对应的以 .php 为后缀的文件同名。
+
+    13. 自动加载器（autoloader）的实现一定不能抛出异常、一定不能触发任一级别的错误信息以及不应该有返回值。

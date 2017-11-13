@@ -1,0 +1,182 @@
+---
+layout: post
+title:  "关于HTTPS"
+date:   2017-11-13 20:29:00 +0800
+categories: jekyll update
+---
+
+# HTTPS = HTTP Over SSL
+
+# SSL历史
+
+SSL协议起源很早。1994年，网景公司就设计了SSL协议1.0版，但是因为设计上有很多严重的问题，这个版本并没有对外公布（这一年网景推出了著名的网景浏览器并迅速获得成功）。1995年，网景公司发布了SSL协议的2.0版，但是很快被发现有严重的漏洞从而导致了SSL协议3.0版的诞生。1996年，经过彻底的重新设计，SSL协议3.0版发布，并得到了大规模应用。目前广泛使用使用的SSL/TLS协议就是基于SSL协议的3.0版。
+
+1999年，互联网标准化组织ISOC接替网景公司，发布了SSL的升级版TLS协议1.0。之后，TLS协议又经历了几次升级，目前最新的为TLS 1.3（草案）。
+
+# 工作原理
+
+SSL/TLS协议的核心是RSA非对称加密。RSA是一个伟大的发明，简单来说，通过RSA，我们可以生成两把钥匙，一把公钥，一把私钥。公钥加密以后私钥可以解开，而私钥加密以后公钥可以解开。这就避免了对称加密系统（加密解密使用同一把密钥）的一个重大缺陷：需要传输密钥。
+
+那么SSL/TLS协议的基本原理就是，客户端获取服务器的公钥，加密信息以后传送给服务器，然后服务器使用私钥解密。这个方案有两个问题。
+
+    服务器传输公钥的时候，是明文的，第三方可以篡改。
+    RSA加密的计算量较大，如果每次通信都使用RSA加密的话，会对性能产生负担。
+
+针对第一个问题，我们需要一个办法来保证服务器传输的公钥确实是服务器的，而不是第三方的。这个时候，我们需要使用*数字证书*。数字证书由权威机构(CA, Certificate Authority)颁发，里面包含有服务器的公钥，证书文件使用CA私钥进行加密。当客户端与服务器建立加密通信的时候，服务器不再返回公钥，而是返回他的数字证书。客户端拿到证书，使用对应的CA的公钥解密，然后获取到服务器的公钥。这里有一个问题，客户端怎么拿到CA的公钥呢？如果还是去CA服务器获取的话，那么我们又会回到问题的原点即怎样保证CA公钥不被人篡改。因此，大部分浏览器中，权威CA的公钥都是内置的，不需要去获取。这就保证了CA公钥的正确性。第三方没有办法伪造证书，因为第三方没有CA的私钥（当然，CA被入侵的例子的也是有的，技术永远解决不了人的问题）。
+
+针对第二个问题，SSL/TLS协议在通信过程中，并不是使用RSA加密，而是使用对称加密，对称加密的密钥（对话密钥）由双方协商生成。
+因此，SSL/TLS协议的基本流程如下：
+
+    客户端索取服务器的数字证书，从而获得服务器公钥
+    双方协商生成对话密钥
+    使用对话密钥进行加密通信
+
+具体流程
+![](https://thumbnail10.baidupcs.com/thumbnail/515f8d42dd7ead96c43b90ebb36258ce?fid=1500015501-250528-767688008101280&time=1510578000&rt=pr&sign=FDTAER-DCb740ccc5511e5e8fedcff06b081203-f2UcLng%2buFYgjG0RUNefBHljf9Q%3d&expires=8h&chkbd=0&chkv=0&dp-logid=7349276928448507472&dp-callid=0&size=c1920_u1080&quality=90&vuk=1500015501&ft=image)
+
+根据上面的论述，SSL/TLS协议的核心便是怎样安全的生成一个对话密钥来加密之后的通信。这个过程称之为*握手*。
+
+握手一共有四次请求，注意，这些请求都是明文的（也没法加密）。
+客户端请求(ClientHello)
+
+首先，客户端（通常是浏览器）先向服务器发送请求，这一步叫做ClientHello。 请求携带以下信息：
+
+1. 客户端支持的协议版本（这是为了和服务器协商使用什么版本的SSL/TLS进行通信）
+2. 客户端生成的一个随机数n1
+3. 客户端支持的加密方法，比如RSA（这是为了和服务器协商使用什么加密方法）
+
+
+服务器响应(ServerHello)
+
+服务器收到客户端请求之后，向客户端发送响应，这一步叫做ServerHello。 响应携带以下信息：
+
+1. 确认通信使用的SSL/TLS版本
+2. 服务器生成的一个随机数n2
+3. 服务器的数字证书
+4. 确认加密方法，比如RSA
+
+
+客户端回应
+
+客户端收到浏览器的响应后，首先验证服务器的证书时候有效。如果证书不是由权威结构颁发(比如12306)，证书包含的域名和实际域名不一致或者证书已经过期，那么浏览器会警告用户，由用户决定是否继续访问。
+
+如果证书没有问题，客户端便会从证书中取出服务器的公钥，然后发送一个请求，携带以下信息。
+
+1. 一个随机数n3，这个随机数用服务器公钥加密，防止被窃听
+2. 编码改变通知，表示之后所有的信息都将会使用双方商定的加密方法加密发送
+3. 客户端握手结束通知，表示客户端的握手阶段已经结束
+
+
+客户端此时有三个随机数，n1，n2，n3，根据这个三个随机数，客户端使用一定的算法生成通信所需的对话密钥。
+服务器最后响应
+
+服务器收到客户端的随机数之后，使用私钥将其解密，这时，服务器也拥有了n1，n2，n3这三个随机数，服务器便可以生成和客户端一致的对话密钥。然后向客户端发送最后的响应。信息如下：
+
+1. 编码改变通知，表示随后的信息都将用双方商定的加密方法和密钥发送
+2. 服务器握手结束通知，表示服务器端的握手阶段已经结束
+
+
+到了这里，客户端和服务器就可以使用对话密钥加密之后所有的通信过程。第三方无法窃听，都是乱码看不懂。也无法篡改，SSL使用MAC(Message Authentication Code)来校验信息。更无法冒充，因为没有对话密钥。
+HTTPS
+
+HTTPS便是HTTP Over SSL，使用SSL协议来加密HTTP通讯过程。SSL协议本质上是提供了一个加密通道，我们在这个通道中传输HTTP，便是HTTPS协议。
+证书
+
+从前面的描述中可以看出，要想进行SSL通信，服务器需要有一个权威机构认证的证书。证书是一个二进制文件，里面包含有一些信息（服务器的公钥，域名，有效时间等）。和域名一样，证书需要购买，并且价格不菲。下面是三个常用的购买证书的网站。
+
+    GoGetSSL
+    SSLs.com
+    SSLmate.com
+
+证书分为很多类型，首先分为三级认证：
+
+    域名认证（Domain Validation, DV）：最低级的认证，CA只检查申请者拥有某个域名，对于这种证书，浏览器会在地址栏显示一把绿色的小锁。
+
+    组织认证（Organization Validation, OV)：CA除了检查域名所有权以外，还会审核组织信息。对于这类认证，浏览器会在地址栏中显示公司信息。
+
+    扩展认证（Extended Validation, EV)：最高级别的认证，相比于组织认证，CA会对组织信息进行更加严格的审核。
+
+除了三个级别以外，证书还分为三个覆盖范围：
+
+    单域名证书：只能用于单一域名，a.com的证书不能用于www.a.com
+
+    通配符证书：可以用于域名下的所有子域名，*.a.com的证书可以用于a.com，也可以用于www.a.com
+
+    多域名证书，可以用于多个域名，比如a.com，b.com
+
+很显然，认证级别越高，覆盖范围越广，证书价格越贵。好消息是，为了推广HTTPS协议，电子前哨基金会EFF成立了Let’s Encrypt，可以提供免费证书。So, Let’s Encrpyt~
+Let’s Encrpyt
+
+这里，我使用一台新的CentOS 7VPS来演示怎样从头搭建一个HTTPS网站。
+安装客户端
+
+先安装基础工具。
+
+		yum update
+		yum install -y git vim
+
+然后，我们来安装letsencrypt客户端。目前，安装letsencrpyt客户端最好的方式便是直接克隆代码仓库。我们登录到服务器上，将letsencrypt的仓库克隆到本地。
+
+		git clone https://github.com/letsencrypt/letsencrypt /opt/letsencrypt
+
+最后，我们安装nginx作为我们的web server。yum install -y nginx。安装好之后，systemctl start nginx启动。默认情况下，CentOS 7只开放了DHCP和SSH的端口，我们需要手动把端口开放一下。
+
+		firewall-cmd --permanent --add-service=http 
+		firewall-cmd --permanent --add-service=https
+		firewall-cmd --reload
+
+
+将自己的域名配置到这台VPS上。这里，我使用leaningmoon.io为例。访问网站，可以看到默认的nginx页面。
+生成证书
+
+我们使用letsencrypt来生成HTTPS所需的证书。作为一个免费的解决方案，letsencrypt只提供域名认证证书（这很合理，组织机构可以自己购买高级证书）。所以，我们只要能证明域名是自己所有即可。最简单的方式是用letsencrypt的webroot验证方式，在VPS上告诉letsencryptnginx的webroot和你的域名，letsencrypt会在webroot的.well-known文件夹中放置一个特别的文件，然后使用域名去访问这个文件，如果可以访问到，当然能够证明域名是你的了。
+
+默认的nginx配置不用任何修改，nginx默认的webroot是/usr/share/nginx/html。
+
+		cd /opt/letsencrypt
+		./letsencrypt-auto certonly -a webroot --webroot-path=/usr/share/nginx/html -d leaningmoon.io # 可以使用多个 -d 添加多个域名
+
+回车之后，letsencrypt会进行一系列操作生成所需的证书文件，最后会有一个弹窗，提示你输入电子邮件地址，如果证书丢了，可以恢复。
+![](https://thumbnail10.baidupcs.com/thumbnail/6f676ee3fb5a32c6a8208e85e8cee213?fid=1500015501-250528-396008872755097&time=1510578000&rt=pr&sign=FDTAER-DCb740ccc5511e5e8fedcff06b081203-rFkkRUPsa0MsREAqF1dCNeG5FTg%3d&expires=8h&chkbd=0&chkv=0&dp-logid=7349276928448507472&dp-callid=0&size=c1920_u1080&quality=90&vuk=1500015501&ft=image)
+
+最后，letsencrypt的输出结果如下。
+![](https://thumbnail10.baidupcs.com/thumbnail/68a3053f686109de197373aafc8e6a99?fid=1500015501-250528-43599045484044&time=1510578000&rt=pr&sign=FDTAER-DCb740ccc5511e5e8fedcff06b081203-EjwW1Oa6KPj5nNNb6Mhr7vD1fIY%3d&expires=8h&chkbd=0&chkv=0&dp-logid=7349276928448507472&dp-callid=0&size=c1920_u1080&quality=90&vuk=1500015501&ft=image)
+可以看到，最为关键的证书文件存放在/etc/letsencrypt/live/leaningmoon.io/fullchain.pem。
+配置nginx
+
+最后一步便是配置nginx采用我们的证书文件并开启https。这里推荐一个网站，cipherli.st，这个网站提供了当前主流的web服务器怎样开启HTTPS的推荐配置。很值得参考。这里我们直接复制他提供的nginx配置。
+
+		server {
+		  listen       80 default_server;
+		  server_name  leaningmoon.io;
+		  return 301 https://$server_name$request_uri;
+		}
+
+		server {
+		  # SSL Configuration
+		  listen 443 ssl default_server;
+		  root         /usr/share/nginx/html;
+
+		  # copy from https://cipherli.st
+		  ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
+		  ssl_prefer_server_ciphers on;
+		  ssl_ciphers "EECDH+AESGCM:EDH+AESGCM:AES256+EECDH:AES256+EDH";
+		  ssl_ecdh_curve secp384r1; # Requires nginx >= 1.1.0
+		  ssl_session_cache shared:SSL:10m;
+		  ssl_session_tickets off; # Requires nginx >= 1.5.9
+		  ssl_stapling on; # Requires nginx >= 1.3.7
+		  ssl_stapling_verify on; # Requires nginx => 1.3.7
+		  resolver 8.8.8.8 8.8.4.4 valid=300s;
+		  resolver_timeout 5s;
+		  add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload";
+		  add_header X-Frame-Options DENY;
+		  add_header X-Content-Type-Options nosniff;
+
+		  # specify cert files
+		  ssl_certificate /etc/letsencrypt/live/leaningmoon.io/fullchain.pem;
+		  ssl_certificate_key /etc/letsencrypt/live/leaningmoon.io/privkey.pem;
+		}
+
+重启nginx，systemctl reload nginx。再次访问网站，我们可以看到，我们的网站也多了一把可爱的小绿锁~
+![](https://thumbnail10.baidupcs.com/thumbnail/177b6e998e97293f7b5cf0f4169487ca?fid=1500015501-250528-461295756223250&time=1510578000&rt=pr&sign=FDTAER-DCb740ccc5511e5e8fedcff06b081203-iQyuG%2bAhUw7jZhUcai%2bJAPqlE4E%3d&expires=8h&chkbd=0&chkv=0&dp-logid=7349615943313716233&dp-callid=0&size=c1920_u1080&quality=90&vuk=1500015501&ft=image)
+
